@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nyolong Review Tokopedia</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+        }
+        h2 {
+            font-weight: bold;
+            color: #2d6a4f;
+        }
+        #scrapeButton {
+            font-size: 18px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        #scrapeButton:hover {
+            background-color: #1b4332;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .review-card {
+            border-left: 5px solid #2d6a4f;
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+        }
+        .review-rating {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1b4332;
+        }
+        .no-reviews {
+            font-weight: bold;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5 p-4 bg-white rounded shadow">
+        <h2 class="text-center mb-4">🔥 Nyolong Review Tokopedia 🔥</h2>
+
+        <div class="input-group mb-3">
+            <input type="text" id="url" class="form-control" placeholder="Masukkan URL produk Tokopedia">
+            <button id="scrapeButton" class="btn btn-success" onclick="scrapeReview()">🚀 Colonkkk!!!</button>
+        </div>
+        
+        <div id="loading" class="text-center mt-3" style="display: none;">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Mengambil review...</p>
+        </div>
+
+        <div class="mt-4">
+            <h4 class="mb-3">📢 Hasil Review:</h4>
+            <div id="reviewList"></div>
+        </div>
+    </div>
+
+    <script>
+        async function scrapeReview() {
+            const url = document.getElementById("url").value;
+            console.log(url);
+            
+            const button = document.getElementById("scrapeButton");
+            const loading = document.getElementById("loading");
+            const list = document.getElementById("reviewList");
+
+            if (!url.includes("tokopedia.com")) {
+                alert("❌ Masukkan URL produk Tokopedia yang valid!");
+                return;
+            }
+
+            // Tampilkan loading dan nonaktifkan tombol
+            loading.style.display = "block";
+            button.disabled = true;
+            list.innerHTML = "";
+
+            fetch("http://localhost:3000/scrape", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url })
+            })
+            .then(res => res.json())
+            .then(data => {
+                list.innerHTML = "";
+                
+                if (!data.reviews || data.reviews.length === 0) {
+                    list.innerHTML = "<p class='no-reviews'>❌ Tidak ada review ditemukan.</p>";
+                    return;
+                }
+                
+                data.reviews.forEach(review => {
+                    const div = document.createElement("div");
+                    div.className = "review-card";
+                    div.innerHTML = `
+                        <p class="review-rating">⭐ ${review.rating}</p>
+                        <p>${review.reviewText}</p>
+                    `;
+                    list.appendChild(div);
+                });
+            })
+            .catch(err => console.error("Error:", err))
+            .finally(() => {
+                // Sembunyikan loading dan aktifkan kembali tombol
+                loading.style.display = "none";
+                button.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
