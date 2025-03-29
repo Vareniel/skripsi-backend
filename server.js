@@ -2,11 +2,13 @@ const express = require("express");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
 const { setTimeout } = require("node:timers/promises");
-
+const axios = require('axios'); // For making HTTP requests
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+const VADER_API_URL = 'http://127.0.0.1:5000/sentiment'; // URL ke server Python untuk analisis sentimen VADER
 
 app.post("/scrape", async (req, res) => {
     let { url } = req.body;
@@ -28,37 +30,47 @@ app.post("/scrape", async (req, res) => {
 
         // 🔹 Ambil daftar rating & kategori
         const filters = await page.evaluate(() => {
-            return [...document.querySelectorAll('label.checkbox')]
-                .map(label => label.innerText.trim())
+            return [...document.querySelectorAll('label.checkbox')].map(label => label.innerText.trim())
                 .filter(text => text.match(/^[1-5]$|Kualitas Barang|Pelayanan Penjual|Kemasan Barang|Harga Barang|Sesuai Deskripsi|Pengiriman/));
         });
         console.log("📌 Filter Tersedia:", filters);
 
         const ratings = filters.filter(f => /^[1-5]$/.test(f));
-
         console.log("⭐ Ratings:", ratings);
 
         let allReviews = [];
 
         let prevRating = null;
-        if (filters.length > 0) {            
+        if (filters.length > 0) {
             for (let rating of ratings) {
                 console.log(`📌 Menerapkan filter: ${rating}`);
                 await applyFilter(page, rating, prevRating);
                 let reviews = await scrapeReviews(page);
                 console.log(`🔢 Jumlah ulasan untuk rating ${rating}: ${reviews.length}`);
                 allReviews = [...allReviews, ...reviews];
-                prevRating = rating; // Simpan rating saat ini untuk dinonaktifkan nanti
+                prevRating = rating; // Simpan rating saat ini untuk dinonaktifkannya nanti
             }
         } else {
             console.log("no ratings!");
-            
+
             let reviews = await scrapeReviews(page);
             allReviews = [...allReviews, ...reviews];
         }
 
         console.log("✅ Total Ulasan Ditemukan:", allReviews.length);
-        res.json({ reviews: allReviews });
+
+        // Analisis sentimen menggunakan VADER
+        const reviewsWithSentiment = await Promise.all(allReviews.map(async (review) => {
+            // Kirim ulasan ke server Python untuk analisis sentimen
+            const sentimentResult = await analyzeSentimentWithVADER(review.reviewText);            
+            return {
+                ...review,
+                sentiment: sentimentResult.sentiment, // Menyimpan skor sentimen
+            };
+        }));
+
+        // Kirim ulasan dengan nilai sentimen ke frontend
+        res.json({ reviews: reviewsWithSentiment });
     } catch (error) {
         console.error("❌ Error scraping:", error);
         res.status(500).json({ error: "Failed to scrape data" });
@@ -66,6 +78,16 @@ app.post("/scrape", async (req, res) => {
         await browser.close();
     }
 });
+
+async function analyzeSentimentWithVADER(reviewText) {
+    try {
+        const response = await axios.post(VADER_API_URL, { reviewText });
+        return response.data;
+    } catch (error) {
+        console.error("❌ Error in sentiment analysis:", error);
+        return { sentiment: null };
+    }
+}
 
 async function applyFilter(page, newRating, prevRating = null) {
     await page.evaluate((newRating, prevRating) => {
@@ -112,7 +134,7 @@ async function scrapeReviews(page) {
         const nextButton = await page.$("button[aria-label='Laman berikutnya']:not([disabled])");
         if (nextButton) {
             await nextButton.click();
-            await page.waitForTimeout(2000); // Tunggu agar halaman bisa dimuat
+            await setTimeout(2000); // Tunggu agar perubahan diterapkan sebelum scraping
             pageNumber++;
         } else {
             console.log("✅ Tidak ada halaman berikutnya, selesai.");
