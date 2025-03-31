@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tokopedia Review Scraper</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        
+        body {
+            padding: 20px;
+            background-color: #f9fafb;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .search-icon {
+            color: #4f46e5;
+            font-size: 24px;
+        }
+        
+        section {
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0 20px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #4338ca;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background-color: #eff3ff;
+            border-radius: 8px;
+            padding: 20px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        table {
+            table-layout: fixed;    
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background-color: #f3f4f6;
+            text-align: left;
+            padding: 12px 15px;
+            font-weight: 500;
+            overflow: hidden; /* Mencegah konten meluap */
+            white-space: nowrap; /* Mencegah teks untuk berganti baris */
+            text-overflow: ellipsis; /* Menampilkan elipsis jika teks terpotong */
+        }
+
+        td {
+            padding: 12px 15px;
+            border-top: 1px solid #e5e7eb;
+            overflow: hidden; /* Mencegah konten meluap */
+            white-space: nowrap; /* Mencegah teks untuk berganti baris */
+            text-overflow: ellipsis; /* Menampilkan elipsis jika teks terpotong */
+        }
+
+        /* Aturan khusus untuk kolom pertama (nomor) */
+        th:first-child, td:first-child {
+            width: 80px; /* Atur lebar kolom nomor sesuai kebutuhan */
+        }
+
+        th:nth-child(5), td:nth-child(5) {
+            width: 500px; /* Atur lebar kolom Review sesuai kebutuhan */
+        }
+
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+        
+        .pagination button {
+            background-color: white;
+            color: #4f46e5;
+            border: 1px solid #e5e7eb;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        
+        .pagination button.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .pagination button:first-child,
+        .pagination button:last-child {
+            width: auto;
+            padding: 0 15px;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Gaya untuk loading indicator */
+        /* Loading Container */
+        #loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            color: #6366f1;
+        }
+
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #6366f1;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        #loading-message {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <span class="search-icon">🔍</span>
+            <h1>Tokopedia Review Scraper</h1>
+        </header>
+        
+        <section>
+            <h2>Scrape Reviews</h2>
+            <div class="input-group">
+                <input type="text" id="tokopedia-url" placeholder="Enter Tokopedia URL">
+                <button id="scrape-btn">Scrape</button>
+            </div>
+        </section>
+
+        <div id="loading-container">
+            <div class="loader"></div>
+            <div id="loading-message">Initializing...</div>
+        </div>
+        
+        <section id="stats-section" style="display: none;">
+            <h2>Review Statistics</h2>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="chart-container">
+                        <canvas id="rating-chart"></canvas>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="chart-container">
+                        <canvas id="sentiment-chart"></canvas>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="chart-container">
+                        <canvas id="trend-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="reviews-section" style="display: none;">
+            <h2>Scraped Reviews</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Reviewer</th>
+                        <th>Rating</th>
+                        <th>Sentiment</th>
+                        <th>Review</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="reviews-table">
+                    <!-- Reviews will be populated here -->
+                </tbody>
+            </table>
+            
+            <div class="pagination">
+                <button id="prev-btn">Prev</button>
+                <button class="active">1</button>
+                <button>2</button>
+                <button>3</button>
+                <button id="next-btn">Next</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:3000'); // Sesuaikan dengan URL server Anda
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('status', (data) => {
+            console.log('Status:', data);
+            document.getElementById('loading-message').innerText = data.message;
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
+        // DOM elements
+        const scrapeBtn = document.getElementById('scrape-btn');
+        const tokopediaUrlInput = document.getElementById('tokopedia-url');
+        const statsSection = document.getElementById('stats-section');
+        const reviewsSection = document.getElementById('reviews-section');
+        const reviewsTable = document.getElementById('reviews-table');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        let allReviews = [];
+        let currentPage = 1;
+        let reviewsPerPage = 5;
+        
+        // Charts
+        let ratingChart, sentimentChart, trendChart;
+        
+        // Event listeners
+        scrapeBtn.addEventListener('click', () => {
+            const url = tokopediaUrlInput.value.trim();
+            if (!url) {
+                alert('Please enter a valid Tokopedia URL');
+                return;
+            }
+
+            // Simulate loading
+            document.getElementById('loading-container').style.display = 'flex';
+            document.getElementById('loading-message').innerText = 'Memulai Scrapping...';
+            scrapeBtn.innerHTML = 'Scraping... <i class="fas fa-spinner fa-spin"></i>';
+            scrapeBtn.disabled = true;
+
+            fetch("http://localhost:3000/scrape", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url })
+            })
+            .then(res => res.json())
+            .then(data => {
+                scrapeBtn.innerHTML = 'Scrape <i class="fas fa-arrow-right"></i>';
+                scrapeBtn.disabled = false;
+
+                document.getElementById('loading-container').style.display = 'none';
+
+                // Show sections
+                statsSection.style.display = 'block';
+                reviewsSection.style.display = 'block';
+
+                if (!data.reviews || data.reviews.length === 0) {
+                    alert("No Data Available");
+                    return;
+                }
+
+                allReviews = data.reviews;
+
+                // Apply pagination immediately
+                updateReviews();
+            });
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                updateReviews();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < Math.ceil(allReviews.length / reviewsPerPage)) {
+                currentPage++;
+                updateReviews();
+            }
+        });
+        
+        // Function to update the displayed reviews based on the current page
+        function updateReviews() {
+            const startIndex = (currentPage - 1) * reviewsPerPage;
+            const endIndex = startIndex + reviewsPerPage;
+            const reviewsToShow = allReviews.slice(startIndex, endIndex);
+
+            populateReviews(reviewsToShow);
+
+            // Update pagination button states
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === Math.ceil(allReviews.length / reviewsPerPage);
+
+            // Dynamically generate page buttons with a limit of 5
+            const paginationContainer = document.querySelector('.pagination');
+            paginationContainer.innerHTML = '<button id="prev-btn">Prev</button>';
+
+            const totalPages = Math.ceil(allReviews.length / reviewsPerPage);
+            let startPage = currentPage - 2;
+            let endPage = currentPage + 2;
+
+            if (startPage < 1) {
+                startPage = 1;
+                endPage = Math.min(5, totalPages);
+            }
+
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, totalPages - 4);
+            }
+
+            if (startPage > 1) {
+                const firstPageButton = document.createElement('button');
+                firstPageButton.textContent = '1';
+                firstPageButton.addEventListener('click', () => {
+                    currentPage = 1;
+                    updateReviews();
+                });
+                paginationContainer.appendChild(firstPageButton);
+
+                if (startPage > 2) {
+                    const dotsButton = document.createElement('button');
+                    dotsButton.textContent = '...';
+                    dotsButton.disabled = true;
+                    paginationContainer.appendChild(dotsButton);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                if (i === currentPage) button.classList.add('active');
+                button.addEventListener('click', () => {
+                    currentPage = i;
+                    updateReviews();
+                });
+                paginationContainer.appendChild(button);
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const dotsButton = document.createElement('button');
+                    dotsButton.textContent = '...';
+                    dotsButton.disabled = true;
+                    paginationContainer.appendChild(dotsButton);
+                }
+
+                const lastPageButton = document.createElement('button');
+                lastPageButton.textContent = totalPages;
+                lastPageButton.addEventListener('click', () => {
+                    currentPage = totalPages;
+                    updateReviews();
+                });
+                paginationContainer.appendChild(lastPageButton);
+            }
+
+            paginationContainer.innerHTML += '<button id="next-btn">Next</button>';
+
+            // Reattach event listeners after re-rendering
+            document.getElementById('prev-btn').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateReviews();
+                }
+            });
+
+            document.getElementById('next-btn').addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateReviews();
+                }
+            });
+        }
+
+
+
+        // Populate reviews table with limited reviews
+        function populateReviews(reviews) {
+            reviewsTable.innerHTML = '';
+            
+            reviews.forEach((review, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${review.user}</td>
+                    <td>${review.rating}</td>
+                    <td>${review.sentiment}</td>
+                    <td>${review.reviewText}</td>
+                    <td>${review.timeAgo}</td>
+                `;
+                reviewsTable.appendChild(row);
+            });
+        }
+        
+        // Initialize charts
+        function initCharts(reviews) {
+            // Calculate rating distribution
+            const ratingCounts = [0, 0, 0, 0, 0]; // 1-5 stars
+            reviews.forEach(review => {
+                const ratingIndex = Math.floor(review.rating) - 1;
+                if (ratingIndex >= 0 && ratingIndex < 5) {
+                    ratingCounts[ratingIndex]++;
+                }
+            });
+            
+            // Rating chart (horizontal bar chart)
+            const ratingCtx = document.getElementById('rating-chart').getContext('2d');
+            if (ratingChart) ratingChart.destroy();
+            ratingChart = new Chart(ratingCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['5 ★', '4 ★', '3 ★', '2 ★', '1 ★'],
+                    datasets: [{
+                        label: 'Number of Reviews',
+                        data: ratingCounts.reverse(), // Reverse to show 5 stars at top
+                        backgroundColor: '#4f46e5',
+                        borderColor: '#4f46e5',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Rating Distribution'
+                        }
+                    }
+                }
+            });
+            
+            // Sentiment chart (pie chart)
+            // Categorize reviews as positive (4-5), neutral (3), negative (1-2)
+            const sentimentData = [0, 0, 0]; // positive, neutral, negative
+            reviews.forEach(review => {
+                if (review.rating >= 4) sentimentData[0]++;
+                else if (review.rating >= 3) sentimentData[1]++;
+                else sentimentData[2]++;
+            });
+            
+            const sentimentCtx = document.getElementById('sentiment-chart').getContext('2d');
+            if (sentimentChart) sentimentChart.destroy();
+            sentimentChart = new Chart(sentimentCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Positive', 'Neutral', 'Negative'],
+                    datasets: [{
+                        data: sentimentData,
+                        backgroundColor: [
+                            '#4f46e5', // blue
+                            '#9ca3af', // gray
+                            '#6366f1'  // indigo
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Sentiment Analysis'
+                        }
+                    }
+                }
+            });
+            
+            // Trend chart (line chart)
+            // Group reviews by date and calculate average rating
+            const dateMap = new Map();
+            reviews.forEach(review => {
+                if (!dateMap.has(review.date)) {
+                    dateMap.set(review.date, { sum: 0, count: 0 });
+                }
+                const data = dateMap.get(review.date);
+                data.sum += review.rating;
+                data.count++;
+            });
+            
+            const dates = Array.from(dateMap.keys()).sort();
+            const avgRatings = dates.map(date => {
+                const data = dateMap.get(date);
+                return data.sum / data.count;
+            });
+            
+            const trendCtx = document.getElementById('trend-chart').getContext('2d');
+            if (trendChart) trendChart.destroy();
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Average Rating',
+                        data: avgRatings,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Rating Trend Over Time'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 5,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

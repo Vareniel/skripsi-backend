@@ -1,33 +1,41 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nyolong Review Tokopedia</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
         }
+
         .container {
-            max-width: 600px;
+            max-width: 800px;
         }
+
         h2 {
             font-weight: bold;
             color: #2d6a4f;
         }
+
         #scrapeButton {
             font-size: 18px;
             font-weight: bold;
             transition: 0.3s;
         }
+
         #scrapeButton:hover {
             background-color: #1b4332;
         }
+
         .spinner-border {
             width: 3rem;
             height: 3rem;
         }
+
         .review-card {
             border-left: 5px solid #2d6a4f;
             background: white;
@@ -36,21 +44,30 @@
             box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 10px;
         }
+
         .review-rating {
             font-size: 18px;
             font-weight: bold;
             color: #1b4332;
         }
+
         .no-reviews {
             font-weight: bold;
             color: red;
         }
+
         .sentiment-score {
             font-size: 14px;
             font-weight: bold;
         }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+        }
     </style>
 </head>
+
 <body>
     <div class="container mt-5 p-4 bg-white rounded shadow">
         <h2 class="text-center mb-4">🔥 Nyolong Review Tokopedia 🔥</h2>
@@ -59,7 +76,7 @@
             <input type="text" id="url" class="form-control" placeholder="Masukkan URL produk Tokopedia">
             <button id="scrapeButton" class="btn btn-success" onclick="scrapeReview()">🚀 Colonkkk!!!</button>
         </div>
-        
+
         <div id="loading" class="text-center mt-3" style="display: none;">
             <div class="spinner-border text-success" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -67,20 +84,33 @@
             <p class="mt-2">Mengambil review...</p>
         </div>
 
+        <div id="sentimentStats" class="mt-4" style="width: 50%;">
+            <h4 class="mb-3">📊 Statistik Sentimen:</h4>
+            <!-- Canvas untuk Chart -->
+            <canvas id="sentimentChart" style="margin: auto;"></canvas>
+            <h5 class="mt-3" id="productSafety"></h5>
+        </div>
+
         <div class="mt-4">
             <h4 class="mb-3">📢 Hasil Review:</h4>
-            <div id="reviewList"></div>
+            <div id="reviewTableContainer">
+                <!-- Reviews will be displayed here in a table -->
+            </div>
+            <div id="pagination"></div>
         </div>
     </div>
 
     <script>
+        let currentPage = 1;
+        let reviewsPerPage = 5;
+        let allReviews = [];
+        
         async function scrapeReview() {
             const url = document.getElementById("url").value;
-            console.log(url);
-            
+
             const button = document.getElementById("scrapeButton");
             const loading = document.getElementById("loading");
-            const list = document.getElementById("reviewList");
+            const tableContainer = document.getElementById("reviewTableContainer");
 
             if (!url.includes("tokopedia.com")) {
                 alert("❌ Masukkan URL produk Tokopedia yang valid!");
@@ -90,59 +120,203 @@
             // Tampilkan loading dan nonaktifkan tombol
             loading.style.display = "block";
             button.disabled = true;
-            list.innerHTML = "";
 
             fetch("http://localhost:3000/scrape", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url })
-            })
-            .then(res => res.json())
-            .then(data => {
-                list.innerHTML = "";
-                
-                if (!data.reviews || data.reviews.length === 0) {
-                    list.innerHTML = "<p class='no-reviews'>❌ Tidak ada review ditemukan.</p>";
-                    return;
-                }
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    tableContainer.innerHTML = "";
 
-                // Process and display reviews with sentiment scores
-                data.reviews.forEach(review => {                    
-                    const sentiment = review.sentiment; // Now directly using the sentiment value
-                    const div = document.createElement("div");
-                    div.className = "review-card";
-
-                    // Set the sentimentClass and label based on the sentiment value
-                    let sentimentClass = "";
-                    let sentimentLabel = "";
-
-                    if (sentiment === 'positif') {
-                        sentimentClass = "text-success";  // Positive sentiment
-                        sentimentLabel = "Positif";  // Sentiment Label for Positive
-                    } else if (sentiment === 'negatif') {
-                        sentimentClass = "text-danger";  // Negative sentiment
-                        sentimentLabel = "Negatif";  // Sentiment Label for Negative
-                    } else {
-                        sentimentClass = "text-warning";  // Neutral sentiment
-                        sentimentLabel = "Netral";  // Sentiment Label for Neutral
+                    if (!data.reviews || data.reviews.length === 0) {
+                        tableContainer.innerHTML = "<p class='no-reviews'>❌ Tidak ada review ditemukan.</p>";
+                        return;
                     }
 
-                    div.innerHTML = `
-                        <p class="review-rating">⭐ ${review.rating}</p>
-                        <p class="${sentimentClass}">${review.reviewText}</p>
-                        <p class="sentiment-score ${sentimentClass}">Sentimen: ${sentimentLabel}</p>
-                    `;
-                    list.appendChild(div);
-                });
+                    allReviews = data.reviews;
 
-            })
-            .catch(err => console.error("Error:", err))
-            .finally(() => {
-                // Sembunyikan loading dan aktifkan kembali tombol
-                loading.style.display = "none";
-                button.disabled = false;
-            });
+                    updateSentimentStats(allReviews);
+                    displayReviews(currentPage);
+                })
+                .catch(err => console.error("Error:", err))
+                .finally(() => {
+                    // Sembunyikan loading dan aktifkan kembali tombol
+                    loading.style.display = "none";
+                    button.disabled = false;
+                });
         }
+
+        function updateSentimentStats(reviews) {
+            const sentimentCounts = { positif: 0, negatif: 0, netral: 0 };
+
+            reviews.forEach(review => {
+                if (review.sentiment === 'positif') sentimentCounts.positif++;
+                else if (review.sentiment === 'negatif') sentimentCounts.negatif++;
+                else sentimentCounts.netral++;
+            });
+
+            const sentimentData = {
+                labels: ['Positif', 'Negatif', 'Netral'],
+                datasets: [{
+                    label: 'Jumlah Sentimen',
+                    data: [sentimentCounts.positif, sentimentCounts.negatif, sentimentCounts.netral],
+                    backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+                    hoverOffset: 4
+                }]
+            };
+
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+
+           // Hancurkan chart sebelumnya jika ada
+           if (window.myChart) {
+               window.myChart.destroy();
+           }
+           
+           // Buat chart baru
+           window.myChart = new Chart(ctx, {
+               type: 'pie',
+               data: sentimentData,
+               options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true // Sumbu Y dimulai dari nol
+                    }
+                }
+               }
+           });
+
+           // Check product safety for purchase
+           const totalReviews = reviews.length;
+           const positivePercentage = (sentimentCounts.positif / totalReviews) * 100;
+           const isSafe = positivePercentage >= 60 ? "Aman" : "Tidak Aman";
+           document.getElementById("productSafety").innerText = `Keamanan Produk: ${isSafe} (${positivePercentage.toFixed(2)}% Ulasan Positif)`;
+       }
+
+       function displayReviews(page) {
+           const start = (page - 1) * reviewsPerPage;
+           const end = page * reviewsPerPage;
+           const paginatedReviews = allReviews.slice(start, end);
+
+           const tableContainer = document.getElementById("reviewTableContainer");
+           tableContainer.innerHTML = "";
+
+           let tableHTML = `
+               <table class="table table-striped table-bordered">
+                   <thead>
+                       <tr>
+                           <th>Rating</th>
+                           <th>Review</th>
+                           <th>Sentimen</th>
+                       </tr>
+                   </thead>
+                   <tbody>
+           `;
+
+           paginatedReviews.forEach(review => {
+               const sentiment = review.sentiment;
+               let sentimentLabel = "";
+               let sentimentClass = "";
+
+               if (sentiment === 'positif') {
+                   sentimentClass = "text-success";
+                   sentimentLabel = "Positif";
+               } else if (sentiment === 'negatif') {
+                   sentimentClass = "text-danger";
+                   sentimentLabel = "Negatif";
+               } else {
+                   sentimentClass = "text-warning";
+                   sentimentLabel = "Netral";
+               }
+
+               tableHTML += `
+                   <tr>
+                       <td>${review.rating}⭐</td>
+                       <td>${review.reviewText}</td>
+                       <td class="${sentimentClass}">${sentimentLabel}</td>
+                   </tr>
+               `;
+           });
+
+           tableHTML += `
+                   </tbody>
+               </table>
+           `;
+
+           tableContainer.innerHTML = tableHTML;
+           createPagination();
+       }
+
+       function createPagination() {
+           const totalPages = Math.ceil(allReviews.length / reviewsPerPage);
+           const pagination = document.getElementById("pagination");
+           pagination.innerHTML = "";
+
+           // Batasi tampilan maksimal 6 halaman
+           const maxVisiblePages = 6;
+
+           // Tombol panah kiri
+           const prevButton = document.createElement("button");
+           prevButton.className = "btn btn-outline-secondary mx-1";
+           prevButton.innerText = "<"; // Tanda panah kiri
+           prevButton.disabled = currentPage === 1; // Nonaktifkan jika di halaman pertama
+           prevButton.onclick = function () {
+               if (currentPage > 1) {
+                   currentPage--;
+                   displayReviews(currentPage);
+               }
+           };
+           
+           pagination.appendChild(prevButton);
+
+          // Menentukan halaman yang akan ditampilkan
+          let startPage, endPage;
+
+          if (totalPages <= maxVisiblePages) {
+              startPage = 1; 
+              endPage = totalPages; 
+          } else { 
+              if (currentPage <= Math.ceil(maxVisiblePages / 2)) { 
+                  startPage = 1; 
+                  endPage = maxVisiblePages; 
+              } else if (currentPage + Math.floor(maxVisiblePages / 2) >= totalPages) { 
+                  startPage = totalPages - maxVisiblePages + 1; 
+                  endPage = totalPages; 
+              } else { 
+                  startPage = currentPage - Math.floor(maxVisiblePages / 2); 
+                  endPage = currentPage + Math.floor(maxVisiblePages / 2); 
+              }
+          }
+
+          // Tambahkan tombol untuk halaman
+          for (let i = startPage; i <= endPage; i++) { 
+              const button = document.createElement("button"); 
+              button.className = "btn btn-outline-secondary mx-1"; 
+              button.innerText = i; 
+              button.onclick = function () { 
+                  currentPage = i; 
+                  displayReviews(i); 
+              }; 
+              pagination.appendChild(button); 
+          }
+
+          // Tombol panah kanan
+          const nextButton = document.createElement("button");
+          nextButton.className = "btn btn-outline-secondary mx-1";
+          nextButton.innerText = ">"; // Tanda panah kanan
+          nextButton.disabled = currentPage === totalPages; // Nonaktifkan jika di halaman terakhir
+          nextButton.onclick = function () {
+              if (currentPage < totalPages) {
+                  currentPage++;
+                  displayReviews(currentPage);
+              }
+          };
+
+          pagination.appendChild(nextButton);
+      }
     </script>
 </body>
+
 </html>
