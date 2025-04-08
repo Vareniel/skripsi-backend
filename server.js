@@ -40,7 +40,7 @@ app.post("/scrape", async (req, res) => {
 
     try {
         console.log("🔍 Membuka halaman:", url);
-        io.emit('status', { message: '🔍 Membuka halaman...', step: 'opening', progress: 10 });
+        io.emit('status', { message: '🔍 Unveiling the page... The journey begins...', step: 'opening', progress: 10 });
         await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
         // Coba klik tombol jika ada
@@ -48,10 +48,10 @@ app.post("/scrape", async (req, res) => {
         if (buttonExists) {
             await page.click("div.css-11hzwo5 button");
             console.log("✅ Tombol berhasil diklik.");
-            io.emit('status', { message: '✅ Tombol ditemukan dan diklik', step: 'clicking_button', progress: 15 });
+            io.emit('status', { message: '✅ Button found and clicked! The gates are opening...', step: 'clicking_button', progress: 15 });
         } else {
             console.log("⚠️ Tidak menemukan tombol, langsung scroll ke bawah.");
-            io.emit('status', { message: '⚠️ Tidak menemukan tombol, langsung scroll ke bawah.', step: 'scrolling', progress: 20 });
+            io.emit('status', { message: '⚠️ Button not found. No worries, we scroll down into the abyss...', step: 'scrolling', progress: 20 });
         }
 
         await page.evaluate(async () => {
@@ -72,7 +72,7 @@ app.post("/scrape", async (req, res) => {
         });
 
         console.log("🔽 Scrolling selesai, mencoba deteksi review...");
-        io.emit('status', { message: '🔽 Scrolling selesai, mencoba deteksi review...', step: 'detecting_reviews', progress: 30 });
+        io.emit('status', { message: '🔽 The scroll is complete, venturing into review detection...', step: 'detecting_reviews', progress: 30 });
 
         await page.waitForSelector("article.css-15m2bcr", { timeout: 60000 });
 
@@ -85,42 +85,69 @@ app.post("/scrape", async (req, res) => {
         });
 
         console.log("📌 Status Checkbox Ratings:", ratingsStatus);
-        io.emit('status', { message: '📌 Status Checkbox Ratings:' + JSON.stringify(ratingsStatus), step: 'checking_ratings', progress: 35 });
+        io.emit('status', { message: '📌 Checkbox Ratings Status: ' + JSON.stringify(ratingsStatus), step: 'checking_ratings', progress: 35 });
 
         // 🔹 Ambil hanya rating yang tidak disabled
         let activeRatings = ratingsStatus.filter(r => /^[1-5]$/.test(r.text) && !r.disabled).map(r => r.text);
         console.log("⭐ Ratings Aktif:", activeRatings);
-        io.emit('status', { message: '⭐ Ratings Aktif:' + activeRatings.join(', '), step: 'filtering_ratings', progress: 40 });
+        io.emit('status', { message: '⭐ Active Ratings: ' + activeRatings.join(', '), step: 'filtering_ratings', progress: 40 });
 
         let allReviews = [];
 
         if (activeRatings.length < 2) {
             allReviews = await scrapeReviews(page);
-            io.emit('status', { message: message, step: 'scraping_reviews', progress: 50 });
+            // io.emit('status', { message: message, step: 'scraping_reviews', progress: 50 });
         } else {
             let prevRating = null;
             for (let rating of activeRatings) {
+                let filterMessage = '';
+                switch (rating) {
+                    case "5":
+                        filterMessage = '🌟 Unleashing the power of the highest ratings... The elite reviews await! Can you count the stars? Five shines the brightest!';
+                        break;
+                    case "4":
+                        filterMessage = '💎 A noble rating emerges... A few more steps to uncover greatness. Four is the number of stability and strength.';
+                        break;
+                    case "3":
+                        filterMessage = '⚖️ A balanced judgment, neither too high nor too low... Reviewing in the middle ground. Three stands between the highs and the lows.';
+                        break;
+                    case "2":
+                        filterMessage = '🔻 Descending into the shadows... Seeking the lower-rated reviews. Two paths lie ahead, but only one will lead to the truth.';
+                        break;
+                    case "1":
+                        filterMessage = '💀 The lowest of ratings... A perilous journey through the abyss of dissatisfaction. One is the loneliest number in this world.';
+                        break;
+                    default:
+                        filterMessage = '🛠️ Preparing to apply filter... A mystery filter yet to be revealed.';
+                        break;
+                }                
+
                 console.log(`📌 Menerapkan filter: ${rating}`);
-                io.emit('status', { message: `📌 Menerapkan filter: ${rating}`, step: 'applying_filter', progress: 45 });
+                io.emit('status', { message: `📌 ${filterMessage}`, step: 'applying_filter', progress: 45 });
+                
                 await applyFilter(page, rating, prevRating);
+                
                 let reviews = await scrapeReviews(page, (message) => {
-                    io.emit('status', { message: message, step: 'scraping_reviews', progress: 50 });
+                    io.emit('status', { message: '🧐 Scraping reviews... The hunt is on!', step: 'scraping_reviews', progress: 50 });
                 });
+
                 console.log(`🔢 Jumlah ulasan untuk rating ${rating}: ${reviews.length}`);
-                io.emit('status', { message: `🔢 Jumlah ulasan untuk rating ${rating}: ${reviews.length}`, step: 'scraping_reviews', progress: 60 });
+                io.emit('status', { message: `🔢 Number of reviews for rating ${rating}: ${reviews.length}. The count is growing...`, step: 'scraping_reviews', progress: 60 });
+                
                 allReviews = [...allReviews, ...reviews];
                 prevRating = rating;
             }
+
         }
 
         console.log("✅ Total Ulasan Ditemukan:", allReviews.length);
-        io.emit('status', { message: `✅ Total Ulasan Ditemukan: ${allReviews.length}`, step: 'reviews_found', progress: 70 });
+        io.emit('status', { message: `✅ Total Reviews Found: ${allReviews.length}. Victory is near...`, step: 'reviews_found', progress: 70 });
 
         // 🔹 Analisis Sentimen dengan Delay
         const reviewsWithSentiment = [];
         for (let index = 0; index < allReviews.length; index++) {
             const review = allReviews[index];
-            io.emit('status', { message: `Analisis sentimen untuk review ke-${index + 1}`, step: 'analyzing_sentiment', progress: 70 + (index / allReviews.length) * 20 });
+            io.emit('status', { message: `⚔️ Analyzing sentiment for review #${index + 1} of #${allReviews.length}... The true feelings emerge.`, step: 'analyzing_sentiment', progress: 70 + (index / allReviews.length) * 20 });
 
             await setTimeout(1);
 
@@ -138,16 +165,16 @@ app.post("/scrape", async (req, res) => {
                 });
             }
         }
-        io.emit('status', { message: '✅ Analisis sentimen selesai', step: 'sentiment_analysis_complete', progress: 90 });
+        io.emit('status', { message: '✅ Sentiment analysis complete... The souls are read.', step: 'sentiment_analysis_complete', progress: 90 });
         res.json({ reviews: reviewsWithSentiment });
-        io.emit('status', { message: '✅ Data dikirim ke klien', step: 'data_sent', progress: 100 });
+        io.emit('status', { message: '✅ Data sent to client... The quest is complete.', step: 'data_sent', progress: 100 });
     } catch (error) {
         console.error("❌ Error scraping:", error);
-        io.emit('status', { message: `❌ Error scraping: ${error.message}`, step: 'error', progress: 0 });
+        io.emit('status', { message: `❌ Error scraping: ${error.message}. A dark force has intervened...`, step: 'error', progress: 0 });
         res.status(500).json({ error: "Failed to scrape data" });
     } finally {
         await browser.close();
-        io.emit('status', { message: '✅ Browser ditutup', step: 'browser_closed', progress: 100 });
+        io.emit('status', { message: '✅ Browser closed. The path has been sealed.', step: 'browser_closed', progress: 100 });
     }
 });
 

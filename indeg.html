@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tokopedia Review Scraper</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -102,41 +98,24 @@
         }
         
         table {
-            table-layout: fixed;    
             width: 100%;
             border-collapse: collapse;
             background-color: white;
             border-radius: 8px;
             overflow: hidden;
         }
-
+        
         th {
             background-color: #f3f4f6;
             text-align: left;
             padding: 12px 15px;
             font-weight: 500;
-            overflow: hidden; /* Mencegah konten meluap */
-            white-space: nowrap; /* Mencegah teks untuk berganti baris */
-            text-overflow: ellipsis; /* Menampilkan elipsis jika teks terpotong */
         }
-
+        
         td {
             padding: 12px 15px;
             border-top: 1px solid #e5e7eb;
-            overflow: hidden; /* Mencegah konten meluap */
-            white-space: nowrap; /* Mencegah teks untuk berganti baris */
-            text-overflow: ellipsis; /* Menampilkan elipsis jika teks terpotong */
         }
-
-        /* Aturan khusus untuk kolom pertama (nomor) */
-        th:first-child, td:first-child {
-            width: 80px; /* Atur lebar kolom nomor sesuai kebutuhan */
-        }
-
-        th:nth-child(5), td:nth-child(5) {
-            width: 500px; /* Atur lebar kolom Review sesuai kebutuhan */
-        }
-
         
         .pagination {
             display: flex;
@@ -172,49 +151,6 @@
             width: 100%;
             height: 100%;
         }
-
-        /* Gaya untuk loading indicator */
-        /* Loading Container */
-        #loading-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.9);
-            z-index: 1000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2em;
-            color: #6366f1;
-        }
-
-        .loader {
-            border: 8px solid #f3f3f3;
-            border-top: 8px solid #6366f1;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 2s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        #loading-message {
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
     </style>
 </head>
 <body>
@@ -231,11 +167,6 @@
                 <button id="scrape-btn">Scrape</button>
             </div>
         </section>
-
-        <div id="loading-container">
-            <div class="loader"></div>
-            <div id="loading-message">Initializing...</div>
-        </div>
         
         <section id="stats-section" style="display: none;">
             <h2>Review Statistics</h2>
@@ -263,12 +194,11 @@
             <table>
                 <thead>
                     <tr>
-                        <th>No</th>
                         <th>Reviewer</th>
                         <th>Rating</th>
-                        <th>Sentiment</th>
-                        <th>Review</th>
                         <th>Date</th>
+                        <th>Review</th>
+                        <th>Product</th>
                     </tr>
                 </thead>
                 <tbody id="reviews-table">
@@ -285,24 +215,54 @@
             </div>
         </section>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+    
     <script>
-        const socket = io('http://localhost:3000'); // Sesuaikan dengan URL server Anda
-
-        socket.on('connect', () => {
-            console.log('Connected to server');
-        });
-
-        socket.on('status', (data) => {
-            console.log('Status:', data);
-            document.getElementById('loading-message').innerText = data.message;
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-        });
-
+        // Sample data for demonstration
+        const sampleReviews = [
+            {
+                reviewer: "Anna Smith",
+                rating: 4.5,
+                date: "2023-10-15",
+                review: "Great product, fast delivery!",
+                product: "Wireless Earbuds"
+            },
+            {
+                reviewer: "Michael Brown",
+                rating: 3.0,
+                date: "2023-10-12",
+                review: "Average quality, not as expected.",
+                product: "Bluetooth Speaker"
+            },
+            {
+                reviewer: "Linda Johnson",
+                rating: 5.0,
+                date: "2023-10-10",
+                review: "Exceeded expectations, highly recommend!",
+                product: "Smartphone"
+            },
+            {
+                reviewer: "Robert Davis",
+                rating: 4.0,
+                date: "2023-10-08",
+                review: "Good value for money, works well.",
+                product: "Power Bank"
+            },
+            {
+                reviewer: "Sarah Wilson",
+                rating: 2.5,
+                date: "2023-10-05",
+                review: "Disappointing quality, broke after a week.",
+                product: "USB Cable"
+            },
+            {
+                reviewer: "James Taylor",
+                rating: 4.5,
+                date: "2023-10-03",
+                review: "Very satisfied with this purchase!",
+                product: "Wireless Headphones"
+            }
+        ];
+        
         // DOM elements
         const scrapeBtn = document.getElementById('scrape-btn');
         const tokopediaUrlInput = document.getElementById('tokopedia-url');
@@ -311,7 +271,7 @@
         const reviewsTable = document.getElementById('reviews-table');
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
-
+        
         let allReviews = [];
         let currentPage = 1;
         let reviewsPerPage = 5;
@@ -326,11 +286,9 @@
                 alert('Please enter a valid Tokopedia URL');
                 return;
             }
-
+            
             // Simulate loading
-            document.getElementById('loading-container').style.display = 'flex';
-            document.getElementById('loading-message').innerText = 'Memulai Scrapping...';
-            scrapeBtn.innerHTML = 'Scraping... <i class="fas fa-spinner fa-spin"></i>';
+            scrapeBtn.textContent = 'Scraping...';
             scrapeBtn.disabled = true;
 
             fetch("http://localhost:3000/scrape", {
@@ -340,10 +298,9 @@
             })
             .then(res => res.json())
             .then(data => {
-                scrapeBtn.innerHTML = 'Scrape <i class="fas fa-arrow-right"></i>';
-                scrapeBtn.disabled = false;
 
-                document.getElementById('loading-container').style.display = 'none';
+                scrapeBtn.textContent = 'Scrape';
+                scrapeBtn.disabled = false;
 
                 // Show sections
                 statsSection.style.display = 'block';
@@ -354,135 +311,51 @@
                     return;
                 }
 
-                allReviews = data.reviews;
+                all
 
-                // Apply pagination immediately
-                updateReviews();
-            });
-        });
-
-        prevBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                updateReviews();
-            }
-        });
-
-        nextBtn.addEventListener('click', () => {
-            if (currentPage < Math.ceil(allReviews.length / reviewsPerPage)) {
-                currentPage++;
-                updateReviews();
-            }
+                populateReviews();
+                initCharts();
+            })
+            
+            // Simulate API call delay
+            // setTimeout(() => {
+            //     scrapeBtn.textContent = 'Scrape';
+            //     scrapeBtn.disabled = false;
+                
+            //     // Show sections
+            //     statsSection.style.display = 'block';
+            //     reviewsSection.style.display = 'block';
+                
+            //     // Populate data
+            //     populateReviews(sampleReviews);
+            //     initCharts(sampleReviews);
+                
+            //     // Scroll to results
+            //     statsSection.scrollIntoView({ behavior: 'smooth' });
+            // }, 1500);
         });
         
-        // Function to update the displayed reviews based on the current page
-        function updateReviews() {
-            const startIndex = (currentPage - 1) * reviewsPerPage;
-            const endIndex = startIndex + reviewsPerPage;
-            const reviewsToShow = allReviews.slice(startIndex, endIndex);
-
-            populateReviews(reviewsToShow);
-
-            // Update pagination button states
-            prevBtn.disabled = currentPage === 1;
-            nextBtn.disabled = currentPage === Math.ceil(allReviews.length / reviewsPerPage);
-
-            // Dynamically generate page buttons with a limit of 5
-            const paginationContainer = document.querySelector('.pagination');
-            paginationContainer.innerHTML = '<button id="prev-btn">Prev</button>';
-
-            const totalPages = Math.ceil(allReviews.length / reviewsPerPage);
-            let startPage = currentPage - 2;
-            let endPage = currentPage + 2;
-
-            if (startPage < 1) {
-                startPage = 1;
-                endPage = Math.min(5, totalPages);
-            }
-
-            if (endPage > totalPages) {
-                endPage = totalPages;
-                startPage = Math.max(1, totalPages - 4);
-            }
-
-            if (startPage > 1) {
-                const firstPageButton = document.createElement('button');
-                firstPageButton.textContent = '1';
-                firstPageButton.addEventListener('click', () => {
-                    currentPage = 1;
-                    updateReviews();
-                });
-                paginationContainer.appendChild(firstPageButton);
-
-                if (startPage > 2) {
-                    const dotsButton = document.createElement('button');
-                    dotsButton.textContent = '...';
-                    dotsButton.disabled = true;
-                    paginationContainer.appendChild(dotsButton);
-                }
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const button = document.createElement('button');
-                button.textContent = i;
-                if (i === currentPage) button.classList.add('active');
-                button.addEventListener('click', () => {
-                    currentPage = i;
-                    updateReviews();
-                });
-                paginationContainer.appendChild(button);
-            }
-
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                    const dotsButton = document.createElement('button');
-                    dotsButton.textContent = '...';
-                    dotsButton.disabled = true;
-                    paginationContainer.appendChild(dotsButton);
-                }
-
-                const lastPageButton = document.createElement('button');
-                lastPageButton.textContent = totalPages;
-                lastPageButton.addEventListener('click', () => {
-                    currentPage = totalPages;
-                    updateReviews();
-                });
-                paginationContainer.appendChild(lastPageButton);
-            }
-
-            paginationContainer.innerHTML += '<button id="next-btn">Next</button>';
-
-            // Reattach event listeners after re-rendering
-            document.getElementById('prev-btn').addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    updateReviews();
-                }
-            });
-
-            document.getElementById('next-btn').addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    updateReviews();
-                }
-            });
-        }
-
-
-
-        // Populate reviews table with limited reviews
+        // Pagination buttons (just for UI, not functional in this demo)
+        prevBtn.addEventListener('click', () => {
+            alert('Previous page functionality would be implemented here');
+        });
+        
+        nextBtn.addEventListener('click', () => {
+            alert('Next page functionality would be implemented here');
+        });
+        
+        // Populate reviews table
         function populateReviews(reviews) {
             reviewsTable.innerHTML = '';
             
-            reviews.forEach((review, index) => {
+            reviews.forEach(review => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${review.user}</td>
+                    <td>${review.reviewer}</td>
                     <td>${review.rating}</td>
-                    <td>${review.sentiment}</td>
-                    <td>${review.reviewText}</td>
-                    <td>${review.timeAgo}</td>
+                    <td>${review.date}</td>
+                    <td>${review.review}</td>
+                    <td>${review.product}</td>
                 `;
                 reviewsTable.appendChild(row);
             });
